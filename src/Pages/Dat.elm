@@ -121,7 +121,7 @@ view model =
                             |> List.indexedMap
                                 (\i row ->
                                     tr []
-                                        (td [] [ a [ A.name <| String.fromInt i ] [ text <| String.fromInt i ] ]
+                                        (td [] [ a [ Route.href <| Route.DatId model.file i ] [ code [] [ text "#", text <| String.fromInt i ] ] ]
                                             :: List.map2
                                                 (\h val ->
                                                     td []
@@ -173,27 +173,29 @@ viewVal val =
             a [ target "_blank", href url ] [ img [ style "max-height" "2em", src url, alt s ] [] ]
 
         DatBool b ->
-            text <|
-                if b then
-                    "true"
+            i []
+                [ text <|
+                    if b then
+                        "true"
 
-                else
-                    "false"
+                    else
+                        "false"
+                ]
 
         DatInt i ->
-            text <| String.fromInt i
+            code [] [ text <| String.fromInt i ]
 
         DatFloat f ->
-            text <| String.fromFloat f
+            code [] [ text <| String.fromFloat f ]
 
         DatNull ->
-            text "(null)"
+            i [] [ text "null" ]
 
         DatList vs ->
             span [] [ text "[", vs |> List.map viewVal |> List.intersperse (text ", ") |> span [], text "]" ]
 
         DatUnknown v ->
-            text "???"
+            i [] [ text "???" ]
 
 
 decoder : D.Decoder Dat

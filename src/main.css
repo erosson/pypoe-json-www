@@ -1,3 +1,13 @@
+body {
+  background: black;
+  color: white;
+}
+a {
+  color: cyan;
+}
+a:visited {
+  color: violet;
+}
 table, td, th {
   border: 1px solid grey;
   border-collapse: collapse;
