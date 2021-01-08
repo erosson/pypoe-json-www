@@ -4,8 +4,8 @@ import * as serviceWorker from './serviceWorker';
 
 const flags = {}
 const app = Elm.Main.init({flags});
-const root = "http://localhost:5000/dist"
-// const root = "https://erosson.github.io/pypoe-json/dist"
+// const root = "http://localhost:5000/dist"
+const root = "https://erosson.github.io/pypoe-json/dist"
 
 fetch(root+"/version.json")
 .then(res => {
