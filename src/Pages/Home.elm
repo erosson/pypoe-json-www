@@ -77,7 +77,23 @@ view model =
         , a [ target "_blank", href "https://www.pathofexile.com" ] [ text "Path of Exile" ]
         , text " using "
         , a [ target "_blank", href "https://github.com/OmegaK2/PyPoE" ] [ text "PyPoE" ]
-        , text "."
+        , text ". "
+        , case model.session.index of
+            RemoteData.Success index ->
+                let
+                    successdex =
+                        index |> List.filterMap Result.toMaybe
+                in
+                span []
+                    [ text "Parsed "
+                    , text <| Util.formatInt <| List.length successdex
+                    , text " of "
+                    , text <| Util.formatInt <| List.length index
+                    , text " .dat files."
+                    ]
+
+            _ ->
+                span [] []
         ]
     , div [] <|
         case model.session.version of
@@ -85,7 +101,8 @@ view model =
                 [ code [] [ text err ] ]
 
             RemoteData.Success version ->
-                [ text version
+                [ text "Path of Exile version: "
+                , text version
                 , text " ("
                 , a [ target "_blank", href <| "https://github.com/erosson/pypoe-json/tree/master/dist/version.json" ] [ text "github" ]
                 , text ", "
