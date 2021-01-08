@@ -1,0 +1,21 @@
+{
+  "name": "pypoe-json-www",
+  "version": "1.0.0",
+  "main": "src/index.js",
+  "repository": "https://github.com/erosson/pypoe-json",
+  "private": true,
+  "scripts": {
+    "start:debug": "elm-app start",
+    "build": "elm-app build",
+    "lint": "elm-format --validate ./src",
+    "test": "elm-app test",
+    "start": "bash -c \"ELM_DEBUGGER=false elm-app start\"",
+    "serve": "serve -s build",
+    "serve:build": "bash -c \"yarn build && yarn serve\""
+  },
+  "devDependencies": {
+    "create-elm-app": "^5.22.0",
+    "elm-format": "^0.8.4",
+    "serve": "^11.3.2"
+  }
+}
