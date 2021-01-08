@@ -111,7 +111,7 @@ type Msg
     = OnUrlRequest Browser.UrlRequest
     | OnUrlChange Url
     | FetchedVersion D.Value
-    | FetchedIndexDat D.Value
+    | FetchedIndex D.Value
     | HomeMsg Pages.Home.Msg
     | DatMsg Pages.Dat.Msg
     | DatIdMsg Pages.DatId.Msg
@@ -144,10 +144,10 @@ update msg model =
                 Err err ->
                     ( updateSession (model |> toSession |> (\s -> { s | version = RemoteData.Failure <| D.errorToString err })) model, Cmd.none )
 
-        FetchedIndexDat json ->
-            case D.decodeValue (D.field "data" <| D.list D.string) json of
-                Ok indexDat ->
-                    ( updateSession (model |> toSession |> (\s -> { s | indexDat = RemoteData.Success indexDat })) model, Cmd.none )
+        FetchedIndex json ->
+            case D.decodeValue (D.field "data" Session.indexDecoder) json of
+                Ok index ->
+                    ( updateSession (model |> toSession |> (\s -> { s | index = RemoteData.Success index })) model, Cmd.none )
 
                 Err err ->
                     ( updateSession (model |> toSession |> (\s -> { s | version = RemoteData.Failure <| D.errorToString err })) model, Cmd.none )
@@ -193,7 +193,7 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         [ Ports.fetchedVersion FetchedVersion
-        , Ports.fetchedIndexDat FetchedIndexDat
+        , Ports.fetchedIndex FetchedIndex
         , case model of
             NotFound session ->
                 Sub.none

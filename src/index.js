@@ -4,8 +4,10 @@ import * as serviceWorker from './serviceWorker';
 
 const flags = {}
 const app = Elm.Main.init({flags});
+const root = "http://localhost:5000/dist"
+// const root = "https://erosson.github.io/pypoe-json/dist"
 
-fetch("https://erosson.github.io/pypoe-json/dist/version.json")
+fetch(root+"/version.json")
 .then(res => {
   if (res.status == 200) return res.json()
   else return Promise.reject("bad response status: "+res.status)
@@ -13,16 +15,16 @@ fetch("https://erosson.github.io/pypoe-json/dist/version.json")
 .then(data => app.ports.fetchedVersion.send({data}))
 .catch(error => app.ports.fetchedVersion.send({error: error.message || error.toString()}))
 
-fetch("https://erosson.github.io/pypoe-json/dist/index_dat.json")
+fetch(root+"/index.json")
 .then(res => {
   if (res.status == 200) return res.json()
   else return Promise.reject("bad response status: "+res.status)
 })
-.then(data => app.ports.fetchedIndexDat.send({data}))
-.catch(error => app.ports.fetchedIndexDat.send({error: error.message || error.toString()}))
+.then(data => app.ports.fetchedIndex.send({data}))
+.catch(error => app.ports.fetchedIndex.send({error: error.message || error.toString()}))
 
 app.ports.fetchDat.subscribe(path => {
-  fetch("https://erosson.github.io/pypoe-json/dist/dat/"+path+".json")
+  fetch(root+"/dat/"+path+".json")
   .then(res => {
     if (res.status == 200) return res.json()
     else return Promise.reject("bad response status: "+res.status)

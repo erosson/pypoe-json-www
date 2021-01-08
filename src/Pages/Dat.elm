@@ -8,6 +8,7 @@ import Ports
 import RemoteData exposing (RemoteData)
 import Route exposing (Route)
 import Session exposing (Session)
+import Util
 
 
 type alias Dat =
@@ -30,16 +31,33 @@ type DatValue
 
 
 type alias Model =
-    { session : Session, file : String, content : RemoteData String Dat }
+    { session : Session
+    , file : String
+    , content : RemoteData String Dat
+
+    -- page number, OR show all
+    , page : Maybe Int
+    }
 
 
 type Msg
     = FetchedDat D.Value
+    | PageAll
+    | PageNext
+    | PagePrev
+    | PageFirst
+    | PageLast
 
 
 init : String -> Session -> ( Model, Cmd Msg )
 init file session =
-    ( { session = session, file = file, content = RemoteData.Loading }, Ports.fetchDat file )
+    ( { session = session
+      , file = file
+      , content = RemoteData.Loading
+      , page = Just 0
+      }
+    , Ports.fetchDat file
+    )
 
 
 toSession : Model -> Session
@@ -62,6 +80,36 @@ update msg model =
 
                 Err err ->
                     ( { model | content = RemoteData.Failure <| D.errorToString err }, Cmd.none )
+
+        PageAll ->
+            ( { model | page = Nothing }, Cmd.none )
+
+        PageNext ->
+            ( model |> pageTo (\_ n -> n + 1), Cmd.none )
+
+        PagePrev ->
+            ( model |> pageTo (\_ n -> n - 1), Cmd.none )
+
+        PageFirst ->
+            ( model |> pageTo (\_ _ -> 0), Cmd.none )
+
+        PageLast ->
+            -- crude, but effective
+            ( model |> pageTo (\top _ -> top), Cmd.none )
+
+
+pageTo : (Int -> Int -> Int) -> Model -> Model
+pageTo pageFn model =
+    case ( model.page, model.content ) of
+        ( Just page, RemoteData.Success dat ) ->
+            let
+                top =
+                    List.length dat.data // pageSize
+            in
+            { model | page = pageFn top page |> clamp 0 top |> Just }
+
+        _ ->
+            model
 
 
 subscriptions : Model -> Sub Msg
@@ -86,7 +134,7 @@ view model =
         , span [] <|
             case model.content of
                 RemoteData.Success dat ->
-                    [ text <| " (" ++ (String.fromInt <| List.length dat.data) ++ " rows)" ]
+                    [ text <| " (" ++ (Util.formatInt <| List.length dat.data) ++ " rows)" ]
 
                 _ ->
                     []
@@ -97,7 +145,8 @@ view model =
                 [ code [] [ text err ] ]
 
             RemoteData.Success dat ->
-                [ table []
+                [ viewPaginator model dat
+                , table []
                     [ thead []
                         [ tr []
                             (th [] [ text "#" ]
@@ -117,11 +166,17 @@ view model =
                         ]
                     , tbody []
                         (dat.data
-                            |> List.take 250
+                            |> (case model.page of
+                                    Nothing ->
+                                        identity
+
+                                    Just n ->
+                                        List.drop (pageSize * n) >> List.take pageSize
+                               )
                             |> List.indexedMap
                                 (\i row ->
                                     tr []
-                                        (td [] [ a [ Route.href <| Route.DatId model.file i ] [ code [] [ text "#", text <| String.fromInt i ] ] ]
+                                        (td [] [ a [ Route.href <| Route.DatId model.file i ] [ code [] [ text "#", text <| String.fromInt <| pageSize * Maybe.withDefault 0 model.page + i ] ] ]
                                             :: List.map2
                                                 (\h val ->
                                                     td []
@@ -139,11 +194,61 @@ view model =
                                 )
                         )
                     ]
+                , viewPaginator model dat
                 ]
 
             _ ->
                 [ code [] [ text "loading..." ] ]
     ]
+
+
+pageSize =
+    250
+
+
+viewPaginator : Model -> Dat -> Html Msg
+viewPaginator model dat =
+    case model.page of
+        Nothing ->
+            div [] []
+
+        Just page ->
+            let
+                lo =
+                    pageSize * page
+
+                hi =
+                    Basics.min top <| pageSize * (page + 1)
+
+                top =
+                    List.length dat.data
+            in
+            if top <= pageSize then
+                div [] []
+
+            else
+                div [ class "paginator" ]
+                    [ button [ onClick PageFirst ] [ text "<< First" ]
+                    , button [ onClick PagePrev ] [ text "< Prev" ]
+                    , div []
+                        [ div []
+                            [ text <| Util.formatInt lo
+                            , text " - "
+                            , text <| Util.formatInt hi
+                            , text " of "
+                            , text <| Util.formatInt top
+                            ]
+                        , div []
+                            [ button [ onClick PageAll ]
+                                [ text "Show all "
+                                , text <| Util.formatInt top
+                                , text " items (slow)"
+                                ]
+                            ]
+                        ]
+                    , button [ onClick PageNext ] [ text "Next >" ]
+                    , button [ onClick PageLast ] [ text "Last >>" ]
+                    ]
 
 
 viewKeyVal : Header -> DatValue -> Html msg

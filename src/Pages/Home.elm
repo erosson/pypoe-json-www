@@ -15,19 +15,27 @@ import Html.Events as E exposing (..)
 import RemoteData exposing (RemoteData)
 import Route exposing (Route)
 import Session exposing (Session)
+import Util
 
 
 type alias Model =
-    { session : Session }
+    { session : Session, sortCol : Col, sortAsc : Bool }
+
+
+type Col
+    = Name
+    | NumHeaders
+    | NumItems
+    | Size
 
 
 type Msg
-    = Noop
+    = SortClicked Col
 
 
 init : Session -> ( Model, Cmd Msg )
 init session =
-    ( { session = session }, Cmd.none )
+    ( { session = session, sortCol = Name, sortAsc = False }, Cmd.none )
 
 
 toSession : Model -> Session
@@ -43,8 +51,12 @@ updateSession s m =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Noop ->
-            ( model, Cmd.none )
+        SortClicked col ->
+            if model.sortCol == col then
+                ( { model | sortAsc = not model.sortAsc }, Cmd.none )
+
+            else
+                ( { model | sortCol = col, sortAsc = False }, Cmd.none )
 
 
 subscriptions : Model -> Sub Msg
@@ -84,16 +96,102 @@ view model =
             _ ->
                 [ text "version loading..." ]
     , div [] <|
-        case model.session.indexDat of
+        case model.session.index of
             RemoteData.Failure err ->
                 [ code [] [ text err ] ]
 
-            RemoteData.Success indexDat ->
-                [ indexDat
-                    |> List.map (\dat -> li [] [ a [ Route.href <| Route.Dat dat ] [ text dat ] ])
-                    |> ul []
+            RemoteData.Success index ->
+                [ table []
+                    [ thead []
+                        [ th [] [ button [ onClick <| SortClicked Name ] [ text "Filename" ] ]
+                        , th [] [ button [ onClick <| SortClicked NumHeaders ] [ text "Cols" ] ]
+                        , th [] [ button [ onClick <| SortClicked NumItems ] [ text "Rows" ] ]
+                        , th [] [ button [ onClick <| SortClicked Size ] [ text "Size" ] ]
+                        ]
+                    , tbody []
+                        (index
+                            |> sortIndex model.sortCol model.sortAsc
+                            |> List.map
+                                (\mentry ->
+                                    tr [] <|
+                                        case mentry of
+                                            Ok entry ->
+                                                [ td [] [ a [ Route.href <| Route.Dat entry.filename ] [ text entry.filename ] ]
+                                                , td [] [ text <| Util.formatInt entry.numHeaders ]
+                                                , td [] [ text <| Util.formatInt entry.numItems ]
+                                                , td [] [ text <| formatBytes entry.size ]
+                                                ]
+
+                                            Err name ->
+                                                [ td [] [ text name ]
+                                                , td [ colspan 3 ] [ code [] [ text "error in PyPoE" ] ]
+                                                ]
+                                )
+                        )
+                    ]
                 ]
 
             _ ->
                 [ text ".dat list loading..." ]
     ]
+
+
+sortIndex : Col -> Bool -> List (Result String Session.IndexEntry) -> List (Result String Session.IndexEntry)
+sortIndex col asc =
+    let
+        sortFn fn default =
+            List.sortBy (Result.map fn >> Result.withDefault default)
+
+        sort : List (Result String Session.IndexEntry) -> List (Result String Session.IndexEntry)
+        sort =
+            case col of
+                Name ->
+                    List.sortBy
+                        (\e ->
+                            case e of
+                                Ok entry ->
+                                    entry.filename
+
+                                Err name ->
+                                    name
+                        )
+
+                NumHeaders ->
+                    sortFn (.numHeaders >> (*) -1) 1
+
+                NumItems ->
+                    sortFn (.numItems >> (*) -1) 1
+
+                Size ->
+                    sortFn (.size >> (*) -1) 1
+
+        ord =
+            if asc then
+                List.reverse
+
+            else
+                identity
+    in
+    sort >> ord
+
+
+formatBytes : Int -> String
+formatBytes b =
+    let
+        kb =
+            toFloat b / 1024
+
+        mb =
+            kb / 1024
+
+        gb =
+            mb / 1024
+    in
+    if mb < 1 then
+        Util.formatFloat kb ++ "k"
+
+    else if gb < 1 then
+        Util.formatFloat mb ++ "MB"
+
+    else
+        Util.formatFloat gb ++ "GB"

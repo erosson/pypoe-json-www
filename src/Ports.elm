@@ -6,7 +6,7 @@ import Json.Decode as Json
 port fetchedVersion : (Json.Value -> msg) -> Sub msg
 
 
-port fetchedIndexDat : (Json.Value -> msg) -> Sub msg
+port fetchedIndex : (Json.Value -> msg) -> Sub msg
 
 
 port fetchDat : String -> Cmd msg
