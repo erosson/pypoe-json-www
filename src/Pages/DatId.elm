@@ -4,7 +4,7 @@ import Html as H exposing (..)
 import Html.Attributes as A exposing (..)
 import Html.Events as E exposing (..)
 import Json.Decode as D
-import Pages.Dat exposing (Dat, DatValue(..), Header)
+import Pages.Dat exposing (Dat, DatValue(..), Header, decoder, viewKeyVal, viewVal)
 import Ports
 import RemoteData exposing (RemoteData)
 import Route exposing (Route)
@@ -125,74 +125,3 @@ view model =
             _ ->
                 [ code [] [ text "loading..." ] ]
     ]
-
-
-viewKeyVal : Header -> DatValue -> Html msg
-viewKeyVal h val =
-    case ( h.key, val ) of
-        ( Just key, DatInt n ) ->
-            a [ Route.href <| Route.DatId key n ] [ viewVal val ]
-
-        ( Just key, DatList vs ) ->
-            span [] [ text "[", vs |> List.map (viewKeyVal h) |> span [], text "]" ]
-
-        _ ->
-            viewVal val
-
-
-viewVal : DatValue -> Html msg
-viewVal val =
-    case val of
-        DatString s ->
-            text s
-
-        DatImg s ->
-            let
-                url =
-                    "https://web.poecdn.com/image/" ++ String.replace ".dds" "" s ++ ".png?scale=1"
-            in
-            a [ target "_blank", href url ] [ img [ style "max-height" "2em", src url, alt s ] [] ]
-
-        DatInt i ->
-            text <| String.fromInt i
-
-        DatFloat f ->
-            text <| String.fromFloat f
-
-        DatNull ->
-            text "(null)"
-
-        DatList vs ->
-            span [] [ text "[", vs |> List.map viewVal |> span [], text "]" ]
-
-        DatUnknown v ->
-            text "???"
-
-
-decoder : D.Decoder Dat
-decoder =
-    D.field "data" <|
-        D.map3 Dat
-            (D.field "filename" D.string)
-            (D.field "header" <| D.list <| D.map2 Header (D.field "name" D.string) (D.field "key" <| D.maybe D.string))
-            (D.field "data" <| D.list <| D.list valDecoder)
-
-
-valDecoder : D.Decoder DatValue
-valDecoder =
-    D.oneOf
-        [ D.string
-            |> D.map
-                (\s ->
-                    if String.startsWith "Art/2D" s then
-                        DatImg s
-
-                    else
-                        DatString s
-                )
-        , D.int |> D.map DatInt
-        , D.float |> D.map DatFloat
-        , D.null DatNull
-        , D.list (D.lazy (\_ -> valDecoder)) |> D.map DatList
-        , D.value |> D.map DatUnknown
-        ]

@@ -1,4 +1,4 @@
-module Pages.Dat exposing (Dat, DatValue(..), Header, Model, Msg(..), init, subscriptions, toSession, update, updateSession, view)
+module Pages.Dat exposing (Dat, DatValue(..), Header, Model, Msg(..), decoder, init, subscriptions, toSession, update, updateSession, view, viewKeyVal, viewVal)
 
 import Html as H exposing (..)
 import Html.Attributes as A exposing (..)
@@ -21,6 +21,7 @@ type alias Header =
 type DatValue
     = DatString String
     | DatImg String
+    | DatBool Bool
     | DatInt Int
     | DatFloat Float
     | DatNull
@@ -126,10 +127,10 @@ view model =
                                                     td []
                                                         [ case ( h.key, val ) of
                                                             ( Just key, DatInt n ) ->
-                                                                a [ Route.href <| Route.DatId key n ] [ viewVal val ]
+                                                                a [ Route.href <| Route.DatId key n ] [ viewKeyVal h val ]
 
                                                             _ ->
-                                                                viewVal val
+                                                                viewKeyVal h val
                                                         ]
                                                 )
                                                 dat.headers
@@ -145,6 +146,19 @@ view model =
     ]
 
 
+viewKeyVal : Header -> DatValue -> Html msg
+viewKeyVal h val =
+    case ( h.key, val ) of
+        ( Just key, DatInt n ) ->
+            a [ Route.href <| Route.DatId key n ] [ viewVal val ]
+
+        ( Just key, DatList vs ) ->
+            span [] [ text "[", vs |> List.map (viewKeyVal h) |> List.intersperse (text ", ") |> span [], text "]" ]
+
+        _ ->
+            viewVal val
+
+
 viewVal : DatValue -> Html msg
 viewVal val =
     case val of
@@ -158,6 +172,14 @@ viewVal val =
             in
             a [ target "_blank", href url ] [ img [ style "max-height" "2em", src url, alt s ] [] ]
 
+        DatBool b ->
+            text <|
+                if b then
+                    "true"
+
+                else
+                    "false"
+
         DatInt i ->
             text <| String.fromInt i
 
@@ -168,7 +190,7 @@ viewVal val =
             text "(null)"
 
         DatList vs ->
-            span [] [ text "[", vs |> List.map viewVal |> span [], text "]" ]
+            span [] [ text "[", vs |> List.map viewVal |> List.intersperse (text ", ") |> span [], text "]" ]
 
         DatUnknown v ->
             text "???"
@@ -189,12 +211,13 @@ valDecoder =
         [ D.string
             |> D.map
                 (\s ->
-                    if String.startsWith "Art/2DArt" s then
+                    if String.startsWith "Art/2D" s then
                         DatImg s
 
                     else
                         DatString s
                 )
+        , D.bool |> D.map DatBool
         , D.int |> D.map DatInt
         , D.float |> D.map DatFloat
         , D.null DatNull
