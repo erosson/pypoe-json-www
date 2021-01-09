@@ -12,25 +12,27 @@ import Ports
 import RemoteData exposing (RemoteData)
 import Route exposing (Route)
 import Session exposing (Session)
+import Util exposing (Lang)
 
 
 type alias Model =
-    { session : Session, file : String, id : Int, content : RemoteData String Dat, row : Maybe Dat.Entry }
+    { session : Session, lang : Lang, file : String, id : Int, content : RemoteData String Dat, row : Maybe Dat.Entry }
 
 
 type Msg
     = FetchedDat D.Value
 
 
-init : String -> Int -> Session -> ( Model, Cmd Msg )
-init file id session =
+init : Lang -> String -> Int -> Session -> ( Model, Cmd Msg )
+init lang file id session =
     ( { session = session
+      , lang = lang
       , file = file
       , id = id
       , content = RemoteData.Loading
       , row = Nothing
       }
-    , Ports.fetchDat file
+    , Ports.fetchDat { lang = lang, file = file }
     )
 
 
@@ -78,17 +80,17 @@ view model =
 viewBody : Model -> List (Html Msg)
 viewBody model =
     [ h1 []
-        [ a [ Route.href Route.Home ] [ text "pypoe-json" ]
+        [ a [ Route.href Route.home ] [ text "pypoe-json" ]
         , text " > "
-        , a [ Route.href <| Route.Dat model.file ] [ text model.file ]
+        , a [ Route.href <| Route.Dat model.lang model.file ] [ text model.file ]
         , text " > #"
         , text <| String.fromInt model.id
         ]
     , h4 []
         [ text <| model.file ++ ".json: "
-        , a [ target "_blank", href <| model.session.githubUrl ++ "/dat/" ++ model.file ++ ".json" ] [ text "github" ]
+        , a [ target "_blank", href <| model.session.githubUrl ++ Session.fileLangPath model.lang model.file model.session ] [ text "github" ]
         , text ", "
-        , a [ target "_blank", href <| model.session.dataUrl ++ "/dat/" ++ model.file ++ ".json" ] [ text "raw" ]
+        , a [ target "_blank", href <| model.session.dataUrl ++ Session.fileLangPath model.lang model.file model.session ] [ text "raw" ]
         , span [] <|
             case model.content of
                 RemoteData.Success dat ->
@@ -97,6 +99,22 @@ viewBody model =
                 _ ->
                     []
         ]
+    , p [] <|
+        case model.lang of
+            Just lang ->
+                [ text <| "File contains " ++ lang ++ " text: "
+                , b []
+                    [ text <|
+                        if Session.hasFileLanguage lang model.file model.session then
+                            "yes"
+
+                        else
+                            "no"
+                    ]
+                ]
+
+            Nothing ->
+                []
     , div [] <|
         case ( model.content, model.row ) of
             ( RemoteData.Failure err, _ ) ->
@@ -121,9 +139,9 @@ viewBody model =
                                                     text h.name
 
                                                 Just key ->
-                                                    a [ Route.href <| Route.Dat key ] [ text h.name ]
+                                                    a [ Route.href <| Route.Dat model.lang key ] [ text h.name ]
                                             ]
-                                        , td [] [ viewKeyVal h val ]
+                                        , td [] [ viewKeyVal model.lang h val ]
                                         ]
                                 )
                                 dat.headers
@@ -135,7 +153,7 @@ viewBody model =
                     , div []
                         [ h4 []
                             [ text "List format ("
-                            , a [ target "_blank", href <| model.session.dataUrl ++ "/dat/" ++ model.file ++ ".json" ] [ text "source" ]
+                            , a [ target "_blank", href <| model.session.dataUrl ++ Session.fileLangPath model.lang model.file model.session ] [ text "source" ]
                             , text ")"
                             ]
                         , pre [] [ text <| JE.encode 2 <| Dat.entryEncoder row ]

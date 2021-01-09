@@ -20,16 +20,27 @@ fetch(dataUrl+"/version.json")
 
 fetch(dataUrl+"/index.json")
 .then(res => {
-  if (res.status == 200) return res.json()
+  if (res.status === 200) return res.json()
   else return Promise.reject("bad response status: "+res.status)
 })
 .then(data => app.ports.fetchedIndex.send({data}))
 .catch(error => app.ports.fetchedIndex.send({error: error.message || error.toString()}))
 
-app.ports.fetchDat.subscribe(path => {
-  fetch(dataUrl+"/dat/"+path+".json")
+fetch(dataUrl+"/lang.json")
+.then(res => {
+  if (res.status === 200) return res.json()
+  else return Promise.reject("bad response status: "+res.status)
+})
+.then(data => app.ports.fetchedLangs.send({data}))
+.catch(error => app.ports.fetchedLangs.send({error: error.message || error.toString()}))
+
+app.ports.fetchDat.subscribe(({lang, file}) => {
+  const defaultPath = "dat/"+file
+  const langPath = lang ? "lang/"+lang+"/"+file : defaultPath
+  fetch(dataUrl+"/"+langPath+".json")
+  .then(res => (res.status === 404 && lang) ? fetch(dataUrl+"/"+defaultPath+".json") : res)
   .then(res => {
-    if (res.status == 200) return res.json()
+    if (res.status === 200) return res.json()
     else return Promise.reject("bad response status: "+res.status)
   })
   .then(data => app.ports.fetchedDat.send({data}))

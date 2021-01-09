@@ -4,6 +4,10 @@ import FormatNumber
 import FormatNumber.Locales
 
 
+type alias Lang =
+    Maybe String
+
+
 formatInt =
     let
         l =

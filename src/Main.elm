@@ -89,14 +89,14 @@ routeTo mroute =
                     Nothing ->
                         ( NotFound session, Cmd.none )
 
-                    Just Route.Home ->
-                        Pages.Home.init session |> Tuple.mapBoth Home (Cmd.map HomeMsg)
+                    Just (Route.Home lang) ->
+                        Pages.Home.init lang session |> Tuple.mapBoth Home (Cmd.map HomeMsg)
 
-                    Just (Route.Dat f) ->
-                        Pages.Dat.init f session |> Tuple.mapBoth Dat (Cmd.map DatMsg)
+                    Just (Route.Dat lang f) ->
+                        Pages.Dat.init lang f session |> Tuple.mapBoth Dat (Cmd.map DatMsg)
 
-                    Just (Route.DatId f id) ->
-                        Pages.DatId.init f id session |> Tuple.mapBoth DatId (Cmd.map DatIdMsg)
+                    Just (Route.DatId lang f id) ->
+                        Pages.DatId.init lang f id session |> Tuple.mapBoth DatId (Cmd.map DatIdMsg)
 
                     Just Route.Debug ->
                         Pages.Debug.init session |> Tuple.mapBoth Debug (Cmd.map DebugMsg)
@@ -112,6 +112,7 @@ type Msg
     | OnUrlChange Url
     | FetchedVersion D.Value
     | FetchedIndex D.Value
+    | FetchedLangs D.Value
     | HomeMsg Pages.Home.Msg
     | DatMsg Pages.Dat.Msg
     | DatIdMsg Pages.DatId.Msg
@@ -150,7 +151,15 @@ update msg model =
                     ( updateSession (model |> toSession |> (\s -> { s | index = RemoteData.Success index })) model, Cmd.none )
 
                 Err err ->
-                    ( updateSession (model |> toSession |> (\s -> { s | version = RemoteData.Failure <| D.errorToString err })) model, Cmd.none )
+                    ( updateSession (model |> toSession |> (\s -> { s | index = RemoteData.Failure <| D.errorToString err })) model, Cmd.none )
+
+        FetchedLangs json ->
+            case D.decodeValue (D.field "data" <| D.list D.string) json of
+                Ok langs ->
+                    ( updateSession (model |> toSession |> (\s -> { s | langs = RemoteData.Success langs })) model, Cmd.none )
+
+                Err err ->
+                    ( updateSession (model |> toSession |> (\s -> { s | langs = RemoteData.Failure <| D.errorToString err })) model, Cmd.none )
 
         HomeMsg pgmsg ->
             case model of
@@ -194,6 +203,7 @@ subscriptions model =
     Sub.batch
         [ Ports.fetchedVersion FetchedVersion
         , Ports.fetchedIndex FetchedIndex
+        , Ports.fetchedLangs FetchedLangs
         , case model of
             NotFound session ->
                 Sub.none

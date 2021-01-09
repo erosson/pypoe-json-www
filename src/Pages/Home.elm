@@ -15,11 +15,12 @@ import Html.Events as E exposing (..)
 import RemoteData exposing (RemoteData)
 import Route exposing (Route)
 import Session exposing (Session)
-import Util
+import Set exposing (Set)
+import Util exposing (Lang)
 
 
 type alias Model =
-    { session : Session, sortCol : Col, sortAsc : Bool }
+    { session : Session, lang : Lang, sortCol : Col, sortAsc : Bool }
 
 
 type Col
@@ -27,15 +28,16 @@ type Col
     | NumHeaders
     | NumItems
     | Size
+    | Lang
 
 
 type Msg
     = SortClicked Col
 
 
-init : Session -> ( Model, Cmd Msg )
-init session =
-    ( { session = session, sortCol = Name, sortAsc = False }, Cmd.none )
+init : Lang -> Session -> ( Model, Cmd Msg )
+init lang session =
+    ( { session = session, lang = lang, sortCol = Name, sortAsc = False }, Cmd.none )
 
 
 toSession : Model -> Session
@@ -82,13 +84,13 @@ view model =
             RemoteData.Success index ->
                 let
                     successdex =
-                        index |> List.filterMap Result.toMaybe
+                        index.list |> List.filterMap Result.toMaybe
                 in
                 span []
                     [ text "Parsed "
                     , text <| Util.formatInt <| List.length successdex
                     , text " of "
-                    , text <| Util.formatInt <| List.length index
+                    , text <| Util.formatInt <| List.length index.list
                     , text " .dat files."
                     ]
 
@@ -113,6 +115,20 @@ view model =
             _ ->
                 [ text "version loading..." ]
     , div [] <|
+        case model.session.langs of
+            RemoteData.Failure err ->
+                [ code [] [ text err ] ]
+
+            RemoteData.Success langs ->
+                langs
+                    |> List.map (\lang -> viewLangLink model.lang (Just lang) lang)
+                    |> (::) (viewLangLink model.lang Nothing "English")
+                    |> List.intersperse (text ", ")
+                    |> (::) (text "Available languages: ")
+
+            _ ->
+                []
+    , div [] <|
         case model.session.index of
             RemoteData.Failure err ->
                 [ code [] [ text err ] ]
@@ -124,24 +140,40 @@ view model =
                         , th [] [ button [ onClick <| SortClicked NumHeaders ] [ text "Cols" ] ]
                         , th [] [ button [ onClick <| SortClicked NumItems ] [ text "Rows" ] ]
                         , th [] [ button [ onClick <| SortClicked Size ] [ text "Size" ] ]
+                        , th [] [ button [ onClick <| SortClicked Lang ] [ text "Languages" ] ]
                         ]
                     , tbody []
-                        (index
-                            |> sortIndex model.sortCol model.sortAsc
+                        (index.list
+                            |> sortIndex model.lang model.sortCol model.sortAsc
                             |> List.map
                                 (\mentry ->
                                     tr [] <|
                                         case mentry of
                                             Ok entry ->
-                                                [ td [] [ a [ Route.href <| Route.Dat entry.filename ] [ text entry.filename ] ]
+                                                [ td [] [ a [ Route.href <| Route.Dat model.lang entry.filename ] [ text entry.filename ] ]
                                                 , td [] [ text <| Util.formatInt entry.numHeaders ]
                                                 , td [] [ text <| Util.formatInt entry.numItems ]
                                                 , td [] [ text <| formatBytes entry.size ]
+                                                , td [] <|
+                                                    case model.lang of
+                                                        Nothing ->
+                                                            if Set.isEmpty entry.langs then
+                                                                []
+
+                                                            else
+                                                                [ text <| Util.formatInt <| Set.size entry.langs, text " languages" ]
+
+                                                        Just lang ->
+                                                            if Set.member lang entry.langs then
+                                                                [ text lang ]
+
+                                                            else
+                                                                []
                                                 ]
 
                                             Err name ->
                                                 [ td [] [ text name ]
-                                                , td [ colspan 3 ] [ code [] [ text "error in PyPoE" ] ]
+                                                , td [ colspan 4 ] [ code [] [ text "error in PyPoE" ] ]
                                                 ]
                                 )
                         )
@@ -153,8 +185,17 @@ view model =
     ]
 
 
-sortIndex : Col -> Bool -> List (Result String Session.IndexEntry) -> List (Result String Session.IndexEntry)
-sortIndex col asc =
+viewLangLink : Lang -> Lang -> String -> Html msg
+viewLangLink expected lang label =
+    if expected == lang then
+        b [] [ text label ]
+
+    else
+        a [ Route.href <| Route.Home lang ] [ text label ]
+
+
+sortIndex : Lang -> Col -> Bool -> List (Result String Session.IndexEntry) -> List (Result String Session.IndexEntry)
+sortIndex lang col asc =
     let
         sortFn fn default =
             List.sortBy (Result.map fn >> Result.withDefault default)
@@ -174,13 +215,30 @@ sortIndex col asc =
                         )
 
                 NumHeaders ->
-                    sortFn (.numHeaders >> (*) -1) 1
+                    sortFn .numHeaders -1 >> List.reverse
 
                 NumItems ->
-                    sortFn (.numItems >> (*) -1) 1
+                    sortFn .numItems -1 >> List.reverse
 
                 Size ->
-                    sortFn (.size >> (*) -1) 1
+                    sortFn .size -1 >> List.reverse
+
+                Lang ->
+                    case lang of
+                        Nothing ->
+                            sortFn (.langs >> Set.size) -1 >> List.reverse
+
+                        Just l ->
+                            List.sortBy
+                                (\e ->
+                                    case e of
+                                        -- does this file differ in this language? then, alphabetically
+                                        Ok entry ->
+                                            ( Set.member l entry.langs |> sortableBool |> (*) -1, entry.filename )
+
+                                        Err name ->
+                                            ( 1, name )
+                                )
 
         ord =
             if asc then
@@ -190,6 +248,14 @@ sortIndex col asc =
                 identity
     in
     sort >> ord
+
+
+sortableBool b =
+    if b then
+        1
+
+    else
+        0
 
 
 formatBytes : Int -> String

@@ -21,11 +21,12 @@ import Ports
 import RemoteData exposing (RemoteData)
 import Route exposing (Route)
 import Session exposing (Session)
-import Util
+import Util exposing (Lang)
 
 
 type alias Model =
     { session : Session
+    , lang : Lang
     , file : String
     , content : RemoteData String Dat
 
@@ -43,14 +44,15 @@ type Msg
     | PageLast
 
 
-init : String -> Session -> ( Model, Cmd Msg )
-init file session =
+init : Lang -> String -> Session -> ( Model, Cmd Msg )
+init lang file session =
     ( { session = session
+      , lang = lang
       , file = file
       , content = RemoteData.Loading
       , page = Just 0
       }
-    , Ports.fetchDat file
+    , Ports.fetchDat { lang = lang, file = file }
     )
 
 
@@ -123,15 +125,15 @@ view model =
 viewBody : Model -> List (Html Msg)
 viewBody model =
     [ h1 []
-        [ a [ Route.href Route.Home ] [ text "pypoe-json" ]
+        [ a [ Route.href Route.home ] [ text "pypoe-json" ]
         , text " > "
         , text model.file
         ]
     , h4 []
         [ text <| model.file ++ ".json: "
-        , a [ target "_blank", href <| model.session.githubUrl ++ "/dat/" ++ model.file ++ ".json" ] [ text "github" ]
+        , a [ target "_blank", href <| model.session.githubUrl ++ Session.fileLangPath model.lang model.file model.session ] [ text "github" ]
         , text ", "
-        , a [ target "_blank", href <| model.session.dataUrl ++ "/dat/" ++ model.file ++ ".json" ] [ text "raw" ]
+        , a [ target "_blank", href <| model.session.dataUrl ++ Session.fileLangPath model.lang model.file model.session ] [ text "raw" ]
         , span [] <|
             case model.content of
                 RemoteData.Success dat ->
@@ -140,6 +142,22 @@ viewBody model =
                 _ ->
                     []
         ]
+    , p [] <|
+        case model.lang of
+            Just lang ->
+                [ text <| "File contains " ++ lang ++ " text: "
+                , b []
+                    [ text <|
+                        if Session.hasFileLanguage lang model.file model.session then
+                            "yes"
+
+                        else
+                            "no"
+                    ]
+                ]
+
+            Nothing ->
+                []
     , div [] <|
         case model.content of
             RemoteData.Failure err ->
@@ -159,7 +177,7 @@ viewBody model =
                                                     text h.name
 
                                                 Just key ->
-                                                    a [ Route.href <| Route.Dat key ] [ text h.name ]
+                                                    a [ Route.href <| Route.Dat model.lang key ] [ text h.name ]
                                             ]
                                     )
                                     dat.headers
@@ -177,16 +195,16 @@ viewBody model =
                             |> List.indexedMap
                                 (\i row ->
                                     tr []
-                                        (td [] [ a [ Route.href <| Route.DatId model.file i ] [ code [] [ text "#", text <| String.fromInt <| pageSize * Maybe.withDefault 0 model.page + i ] ] ]
+                                        (td [] [ a [ Route.href <| Route.DatId model.lang model.file i ] [ code [] [ text "#", text <| String.fromInt <| pageSize * Maybe.withDefault 0 model.page + i ] ] ]
                                             :: List.map2
                                                 (\h val ->
                                                     td []
                                                         [ case ( h.key, val ) of
                                                             ( Just key, Dat.IntVal n ) ->
-                                                                a [ Route.href <| Route.DatId key n ] [ viewKeyVal h val ]
+                                                                a [ Route.href <| Route.DatId model.lang key n ] [ viewKeyVal model.lang h val ]
 
                                                             _ ->
-                                                                viewKeyVal h val
+                                                                viewKeyVal model.lang h val
                                                         ]
                                                 )
                                                 dat.headers
@@ -252,14 +270,14 @@ viewPaginator model dat =
                     ]
 
 
-viewKeyVal : Header -> Dat.Value -> Html msg
-viewKeyVal h val =
+viewKeyVal : Lang -> Header -> Dat.Value -> Html msg
+viewKeyVal lang h val =
     case ( h.key, val ) of
         ( Just key, Dat.IntVal n ) ->
-            a [ Route.href <| Route.DatId key n ] [ viewVal val ]
+            a [ Route.href <| Route.DatId lang key n ] [ viewVal val ]
 
         ( Just key, Dat.ListVal vs ) ->
-            span [] [ text "[", vs |> List.map (viewKeyVal h) |> List.intersperse (text ", ") |> span [], text "]" ]
+            span [] [ text "[", vs |> List.map (viewKeyVal lang h) |> List.intersperse (text ", ") |> span [], text "]" ]
 
         _ ->
             viewVal val
