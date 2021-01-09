@@ -105,11 +105,7 @@ view model =
             RemoteData.Success version ->
                 [ text "Path of Exile version: "
                 , text version
-                , text " ("
-                , a [ target "_blank", href <| model.session.githubUrl ++ "/version.json" ] [ text "github" ]
-                , text ", "
-                , a [ target "_blank", href <| model.session.dataUrl ++ "/version.json" ] [ text "raw" ]
-                , text ")"
+                , jsonLinks model "version.json"
                 ]
 
             _ ->
@@ -182,7 +178,28 @@ view model =
 
             _ ->
                 [ text ".dat list loading..." ]
+    , div []
+        [ p [] [ text "Other JSON data pypoe-json's constructed:" ]
+        , ul []
+            [ li [] [ text "index.json: .dat file metadata", jsonLinks model "index.json" ]
+            , li [] [ text "list.json: .dat file list", jsonLinks model "list.json" ]
+            , li [] [ text "lang.json: Path of Exile's supported languages", jsonLinks model "lang.json" ]
+            , li [] [ text "version.json: Path of Exile version number", jsonLinks model "version.json" ]
+            , li [] [ text "passive-skill-tree.json", jsonLinks model "passive-skill-tree.json" ]
+            ]
+        ]
     ]
+
+
+jsonLinks : Model -> String -> Html msg
+jsonLinks model file =
+    span []
+        [ text " ("
+        , a [ target "_blank", href <| model.session.githubUrl ++ "/" ++ file ] [ text "github" ]
+        , text ", "
+        , a [ target "_blank", href <| model.session.dataUrl ++ "/" ++ file ] [ text "raw" ]
+        , text ")"
+        ]
 
 
 viewLangLink : Lang -> Lang -> String -> Html msg
