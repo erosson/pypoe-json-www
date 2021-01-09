@@ -17,3 +17,6 @@ table, td, th {
   vertical-align: middle;
   text-align: center;
 }
+.json-source > * {
+  display: inline-block;
+}

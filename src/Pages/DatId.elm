@@ -1,10 +1,12 @@
 module Pages.DatId exposing (Model, Msg(..), init, subscriptions, toSession, update, updateSession, view)
 
+import Dat exposing (Dat, Header)
 import Html as H exposing (..)
 import Html.Attributes as A exposing (..)
 import Html.Events as E exposing (..)
 import Json.Decode as D
-import Pages.Dat exposing (Dat, DatValue(..), Header, decoder, viewKeyVal, viewVal)
+import Json.Encode as JE
+import Pages.Dat exposing (viewKeyVal, viewVal)
 import Ports
 import RemoteData exposing (RemoteData)
 import Route exposing (Route)
@@ -12,7 +14,7 @@ import Session exposing (Session)
 
 
 type alias Model =
-    { session : Session, file : String, id : Int, content : RemoteData String Dat, row : Maybe (List DatValue) }
+    { session : Session, file : String, id : Int, content : RemoteData String Dat, row : Maybe Dat.Entry }
 
 
 type Msg
@@ -45,7 +47,7 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         FetchedDat json ->
-            case D.decodeValue decoder json of
+            case D.decodeValue Dat.decoder json of
                 Ok content ->
                     ( { model
                         | content = RemoteData.Success content
@@ -117,8 +119,23 @@ view model =
                                         ]
                                 )
                                 dat.headers
-                                row
+                                row.vals
                         )
+                    ]
+                , details [ class "json-source" ]
+                    [ summary [] [ text "JSON" ]
+                    , div []
+                        [ h4 []
+                            [ text "List format ("
+                            , a [ target "_blank", href <| "https://erosson.github.io/pypoe-json/dist/dat/" ++ model.file ++ ".json" ] [ text "source" ]
+                            , text ")"
+                            ]
+                        , pre [] [ text <| JE.encode 2 <| Dat.entryEncoder row ]
+                        ]
+                    , div []
+                        [ h4 [] [ text "Object format" ]
+                        , pre [] [ text <| JE.encode 2 <| Dat.objEncoder dat.headers row ]
+                        ]
                     ]
                 ]
 

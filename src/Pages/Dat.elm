@@ -1,6 +1,17 @@
-module Pages.Dat exposing (Dat, DatValue(..), Header, Model, Msg(..), decoder, init, subscriptions, toSession, update, updateSession, view, viewKeyVal, viewVal)
+module Pages.Dat exposing
+    ( Model
+    , Msg(..)
+    , init
+    , subscriptions
+    , toSession
+    , update
+    , updateSession
+    , view
+    , viewKeyVal
+    , viewVal
+    )
 
-import Audio
+import Dat exposing (Dat, Header)
 import Html as H exposing (..)
 import Html.Attributes as A exposing (..)
 import Html.Events as E exposing (..)
@@ -10,26 +21,6 @@ import RemoteData exposing (RemoteData)
 import Route exposing (Route)
 import Session exposing (Session)
 import Util
-
-
-type alias Dat =
-    { filename : String, headers : List Header, data : List (List DatValue) }
-
-
-type alias Header =
-    { name : String, key : Maybe String }
-
-
-type DatValue
-    = DatString String
-    | DatImg String
-    | DatAudio String String
-    | DatBool Bool
-    | DatInt Int
-    | DatFloat Float
-    | DatNull
-    | DatList (List DatValue)
-    | DatUnknown D.Value
 
 
 type alias Model =
@@ -76,7 +67,7 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         FetchedDat json ->
-            case D.decodeValue decoder json of
+            case D.decodeValue Dat.decoder json of
                 Ok content ->
                     ( { model | content = RemoteData.Success content }, Cmd.none )
 
@@ -183,7 +174,7 @@ view model =
                                                 (\h val ->
                                                     td []
                                                         [ case ( h.key, val ) of
-                                                            ( Just key, DatInt n ) ->
+                                                            ( Just key, Dat.IntVal n ) ->
                                                                 a [ Route.href <| Route.DatId key n ] [ viewKeyVal h val ]
 
                                                             _ ->
@@ -191,7 +182,7 @@ view model =
                                                         ]
                                                 )
                                                 dat.headers
-                                                row
+                                                row.vals
                                         )
                                 )
                         )
@@ -253,36 +244,36 @@ viewPaginator model dat =
                     ]
 
 
-viewKeyVal : Header -> DatValue -> Html msg
+viewKeyVal : Header -> Dat.Value -> Html msg
 viewKeyVal h val =
     case ( h.key, val ) of
-        ( Just key, DatInt n ) ->
+        ( Just key, Dat.IntVal n ) ->
             a [ Route.href <| Route.DatId key n ] [ viewVal val ]
 
-        ( Just key, DatList vs ) ->
+        ( Just key, Dat.ListVal vs ) ->
             span [] [ text "[", vs |> List.map (viewKeyVal h) |> List.intersperse (text ", ") |> span [], text "]" ]
 
         _ ->
             viewVal val
 
 
-viewVal : DatValue -> Html msg
+viewVal : Dat.Value -> Html msg
 viewVal val =
     case val of
-        DatString s ->
+        Dat.StringVal s ->
             text s
 
-        DatImg s ->
+        Dat.ImgVal s ->
             let
                 url =
                     "https://web.poecdn.com/image/" ++ String.replace ".dds" "" s ++ ".png?scale=1"
             in
             a [ target "_blank", href url ] [ img [ style "max-height" "2em", src url, alt s ] [] ]
 
-        DatAudio url s ->
+        Dat.AudioVal url s ->
             a [ target "_blank", href url ] [ text s ]
 
-        DatBool b ->
+        Dat.BoolVal b ->
             i []
                 [ text <|
                     if b then
@@ -292,52 +283,17 @@ viewVal val =
                         "false"
                 ]
 
-        DatInt i ->
+        Dat.IntVal i ->
             code [] [ text <| String.fromInt i ]
 
-        DatFloat f ->
+        Dat.FloatVal f ->
             code [] [ text <| String.fromFloat f ]
 
-        DatNull ->
+        Dat.NullVal ->
             i [] [ text "null" ]
 
-        DatList vs ->
+        Dat.ListVal vs ->
             span [] [ text "[", vs |> List.map viewVal |> List.intersperse (text ", ") |> span [], text "]" ]
 
-        DatUnknown v ->
+        Dat.UnknownVal v ->
             i [] [ text "???" ]
-
-
-decoder : D.Decoder Dat
-decoder =
-    D.field "data" <|
-        D.map3 Dat
-            (D.field "filename" D.string)
-            (D.field "header" <| D.list <| D.map2 Header (D.field "name" D.string) (D.field "key" <| D.maybe D.string))
-            (D.field "data" <| D.list <| D.list valDecoder)
-
-
-valDecoder : D.Decoder DatValue
-valDecoder =
-    D.oneOf
-        [ D.string
-            |> D.map
-                (\s ->
-                    if String.startsWith "Art/2D" s then
-                        DatImg s
-
-                    else
-                        case Audio.url s of
-                            Nothing ->
-                                DatString s
-
-                            Just url ->
-                                DatAudio url s
-                )
-        , D.bool |> D.map DatBool
-        , D.int |> D.map DatInt
-        , D.float |> D.map DatFloat
-        , D.null DatNull
-        , D.list (D.lazy (\_ -> valDecoder)) |> D.map DatList
-        , D.value |> D.map DatUnknown
-        ]
