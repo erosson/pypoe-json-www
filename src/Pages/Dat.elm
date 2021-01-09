@@ -1,5 +1,6 @@
 module Pages.Dat exposing (Dat, DatValue(..), Header, Model, Msg(..), decoder, init, subscriptions, toSession, update, updateSession, view, viewKeyVal, viewVal)
 
+import Audio
 import Html as H exposing (..)
 import Html.Attributes as A exposing (..)
 import Html.Events as E exposing (..)
@@ -22,6 +23,7 @@ type alias Header =
 type DatValue
     = DatString String
     | DatImg String
+    | DatAudio String String
     | DatBool Bool
     | DatInt Int
     | DatFloat Float
@@ -277,6 +279,9 @@ viewVal val =
             in
             a [ target "_blank", href url ] [ img [ style "max-height" "2em", src url, alt s ] [] ]
 
+        DatAudio url s ->
+            a [ target "_blank", href url ] [ text s ]
+
         DatBool b ->
             i []
                 [ text <|
@@ -322,7 +327,12 @@ valDecoder =
                         DatImg s
 
                     else
-                        DatString s
+                        case Audio.url s of
+                            Nothing ->
+                                DatString s
+
+                            Just url ->
+                                DatAudio url s
                 )
         , D.bool |> D.map DatBool
         , D.int |> D.map DatInt

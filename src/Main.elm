@@ -220,7 +220,7 @@ view : Model -> Browser.Document Msg
 view model =
     { title = "pypoe-json"
     , body =
-        case model of
+        (case model of
             NotFound session ->
                 Pages.NotFound.view session
 
@@ -235,6 +235,13 @@ view model =
 
             Debug pgmodel ->
                 Pages.Debug.view pgmodel |> List.map (H.map DebugMsg)
+        )
+            ++ [ p []
+                    [ text "Text, images, and data on this page are copyright "
+                    , a [ target "_blank", href "https://www.grindinggear.com/" ] [ text "Grinding Gear Games" ]
+                    , text "."
+                    ]
+               ]
     }
 
 
