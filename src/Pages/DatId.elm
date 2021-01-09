@@ -86,9 +86,9 @@ viewBody model =
         ]
     , h4 []
         [ text <| model.file ++ ".json: "
-        , a [ target "_blank", href <| "https://github.com/erosson/pypoe-json/tree/master/dist/dat/" ++ model.file ++ ".json" ] [ text "github" ]
+        , a [ target "_blank", href <| model.session.githubUrl ++ "/dat/" ++ model.file ++ ".json" ] [ text "github" ]
         , text ", "
-        , a [ target "_blank", href <| "https://erosson.github.io/pypoe-json/dist/dat/" ++ model.file ++ ".json" ] [ text "raw" ]
+        , a [ target "_blank", href <| model.session.dataUrl ++ "/dat/" ++ model.file ++ ".json" ] [ text "raw" ]
         , span [] <|
             case model.content of
                 RemoteData.Success dat ->
@@ -135,7 +135,7 @@ viewBody model =
                     , div []
                         [ h4 []
                             [ text "List format ("
-                            , a [ target "_blank", href <| "https://erosson.github.io/pypoe-json/dist/dat/" ++ model.file ++ ".json" ] [ text "source" ]
+                            , a [ target "_blank", href <| model.session.dataUrl ++ "/dat/" ++ model.file ++ ".json" ] [ text "source" ]
                             , text ")"
                             ]
                         , pre [] [ text <| JE.encode 2 <| Dat.entryEncoder row ]

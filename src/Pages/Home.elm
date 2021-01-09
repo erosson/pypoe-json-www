@@ -104,9 +104,9 @@ view model =
                 [ text "Path of Exile version: "
                 , text version
                 , text " ("
-                , a [ target "_blank", href <| "https://github.com/erosson/pypoe-json/tree/master/dist/version.json" ] [ text "github" ]
+                , a [ target "_blank", href <| model.session.githubUrl ++ "/version.json" ] [ text "github" ]
                 , text ", "
-                , a [ target "_blank", href <| "https://erosson.github.io/pypoe-json/dist/version.json" ] [ text "raw" ]
+                , a [ target "_blank", href <| model.session.dataUrl ++ "/version.json" ] [ text "raw" ]
                 , text ")"
                 ]
 

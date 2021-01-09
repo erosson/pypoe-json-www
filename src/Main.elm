@@ -31,14 +31,14 @@ type Model
 
 
 type alias Flags =
-    {}
+    Session.Flags
 
 
 init : Flags -> Url -> Nav.Key -> ( Model, Cmd Msg )
 init flags url nav =
     let
         session =
-            Session.init (Just nav)
+            Session.init flags (Just nav)
     in
     routeTo (Route.parse url) (NotFound session)
 
