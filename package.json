@@ -18,5 +18,8 @@
     "create-elm-app": "^5.22.0",
     "elm-format": "^0.8.4",
     "serve": "^11.3.2"
+  },
+  "dependencies": {
+    "query-string": "^6.13.8"
   }
 }

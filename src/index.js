@@ -1,9 +1,11 @@
 import './main.css';
 import { Elm } from './Main.elm';
 import * as serviceWorker from './serviceWorker';
+import queryString from 'query-string'
 
-const githubUrl = process.env.ELM_APP_GITHUB_URL || "https://github.com/erosson/pypoe-json/tree/master/dist"
-const dataUrl = process.env.ELM_APP_DATA_URL || "https://erosson.github.io/pypoe-json/dist"
+const qs = queryString.parse(location.search)
+const githubUrl = process.env.ELM_APP_GITHUB_URL || qs.githubUrl || "https://github.com/erosson/pypoe-json/tree/master/dist"
+const dataUrl = process.env.ELM_APP_DATA_URL || qs.dataUrl || "https://erosson.github.io/pypoe-json/dist"
 // const dataUrl = "http://localhost:5000/dist"
 const flags = {dataUrl, githubUrl}
 const app = Elm.Main.init({flags});
