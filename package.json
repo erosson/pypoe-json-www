@@ -10,6 +10,7 @@
     "lint": "elm-format --validate ./src",
     "test": "elm-app test",
     "start": "bash -c \"ELM_DEBUGGER=false elm-app start\"",
+    "start:dev": "bash -c \"ELM_APP_DATA_URL=http://localhost:5000/dist yarn start\"",
     "serve": "serve -s build",
     "serve:build": "bash -c \"yarn build && yarn serve\""
   },
