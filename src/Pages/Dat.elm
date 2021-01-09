@@ -11,6 +11,7 @@ module Pages.Dat exposing
     , viewVal
     )
 
+import Browser
 import Dat exposing (Dat, Header)
 import Html as H exposing (..)
 import Html.Attributes as A exposing (..)
@@ -112,8 +113,15 @@ subscriptions model =
         ]
 
 
-view : Model -> List (Html Msg)
+view : Model -> Browser.Document Msg
 view model =
+    { title = "pypoe-json > " ++ model.file
+    , body = viewBody model
+    }
+
+
+viewBody : Model -> List (Html Msg)
+viewBody model =
     [ h1 []
         [ a [ Route.href Route.Home ] [ text "pypoe-json" ]
         , text " > "

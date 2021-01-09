@@ -1,5 +1,6 @@
 module Pages.DatId exposing (Model, Msg(..), init, subscriptions, toSession, update, updateSession, view)
 
+import Browser
 import Dat exposing (Dat, Header)
 import Html as H exposing (..)
 import Html.Attributes as A exposing (..)
@@ -67,8 +68,15 @@ subscriptions model =
         ]
 
 
-view : Model -> List (Html Msg)
+view : Model -> Browser.Document Msg
 view model =
+    { title = "pypoe-json > " ++ model.file ++ " > " ++ String.fromInt model.id
+    , body = viewBody model
+    }
+
+
+viewBody : Model -> List (Html Msg)
+viewBody model =
     [ h1 []
         [ a [ Route.href Route.Home ] [ text "pypoe-json" ]
         , text " > "

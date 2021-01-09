@@ -218,31 +218,45 @@ subscriptions model =
 
 view : Model -> Browser.Document Msg
 view model =
-    { title = "pypoe-json"
-    , body =
-        (case model of
-            NotFound session ->
-                Pages.NotFound.view session
+    (case model of
+        NotFound session ->
+            Pages.NotFound.view session |> defaultDoc
 
-            Home pgmodel ->
-                Pages.Home.view pgmodel |> List.map (H.map HomeMsg)
+        Home pgmodel ->
+            Pages.Home.view pgmodel |> List.map (H.map HomeMsg) |> defaultDoc
 
-            Dat pgmodel ->
-                Pages.Dat.view pgmodel |> List.map (H.map DatMsg)
+        Dat pgmodel ->
+            Pages.Dat.view pgmodel |> docMap DatMsg
 
-            DatId pgmodel ->
-                Pages.DatId.view pgmodel |> List.map (H.map DatIdMsg)
+        DatId pgmodel ->
+            Pages.DatId.view pgmodel |> docMap DatIdMsg
 
-            Debug pgmodel ->
-                Pages.Debug.view pgmodel |> List.map (H.map DebugMsg)
-        )
-            ++ [ p []
-                    [ text "Text, images, and data on this page are copyright "
-                    , a [ target "_blank", href "https://www.grindinggear.com/" ] [ text "Grinding Gear Games" ]
-                    , text "."
-                    ]
-               ]
+        Debug pgmodel ->
+            Pages.Debug.view pgmodel |> List.map (H.map DebugMsg) |> defaultDoc
+    )
+        |> (\doc -> { doc | body = doc.body ++ footer })
+
+
+docMap : (a -> b) -> Browser.Document a -> Browser.Document b
+docMap fn doc =
+    { title = doc.title
+    , body = doc.body |> List.map (H.map fn)
     }
+
+
+defaultDoc : List (Html msg) -> Browser.Document msg
+defaultDoc =
+    Browser.Document "pypoe-json"
+
+
+footer : List (Html msg)
+footer =
+    [ p []
+        [ text "Text, images, and data on this page are copyright "
+        , a [ target "_blank", href "https://www.grindinggear.com/" ] [ text "Grinding Gear Games" ]
+        , text "."
+        ]
+    ]
 
 
 
