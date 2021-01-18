@@ -294,7 +294,10 @@ viewVal val =
                 url =
                     "https://web.poecdn.com/image/" ++ String.replace ".dds" "" s ++ ".png?scale=1"
             in
-            a [ target "_blank", href url ] [ img [ style "max-height" "2em", src url, alt s ] [] ]
+            div []
+                [ div [] [ a [ target "_blank", href url ] [ img [ style "max-height" "2em", src url, title s, alt s ] [] ] ]
+                , div [] [ a [ target "_blank", href url ] [ text s ] ]
+                ]
 
         Dat.AudioVal url s ->
             a [ target "_blank", href url ] [ text s ]
