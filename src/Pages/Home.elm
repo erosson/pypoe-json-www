@@ -37,7 +37,7 @@ type Msg
 
 init : Lang -> Session -> ( Model, Cmd Msg )
 init lang session =
-    ( { session = session, lang = lang, sortCol = Name, sortAsc = False }, Cmd.none )
+    ( { session = session, lang = lang, sortCol = NumHeaders, sortAsc = False }, Cmd.none )
 
 
 toSession : Model -> Session
