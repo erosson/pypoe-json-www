@@ -58,7 +58,7 @@ valDecoder =
         [ D.string
             |> D.map
                 (\s ->
-                    if String.startsWith "Art/2D" s then
+                    if String.startsWith "Art/2D" s || String.startsWith "Art/Texture" s then
                         ImgVal s
 
                     else
