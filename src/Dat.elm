@@ -5,6 +5,7 @@ module Dat exposing
     , Value(..)
     , decoder
     , entryEncoder
+    , entrySearchText
     , objEncoder
     )
 
@@ -35,6 +36,20 @@ type Value
     | NullVal
     | ListVal (List Value)
     | UnknownVal D.Value
+
+
+entrySearchText : List Header -> Entry -> String
+entrySearchText headers =
+    .vals >> List.map2 valSearchText headers >> String.join "\n"
+
+
+valSearchText : Header -> Value -> String
+valSearchText header val =
+    let
+        sval =
+            val |> valEncoder |> E.encode 0
+    in
+    header.name ++ ": " ++ sval
 
 
 decoder : D.Decoder Dat

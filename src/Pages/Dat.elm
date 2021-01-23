@@ -12,7 +12,7 @@ module Pages.Dat exposing
     )
 
 import Browser
-import Dat exposing (Dat, Header)
+import Dat exposing (Dat, Entry, Header)
 import Html as H exposing (..)
 import Html.Attributes as A exposing (..)
 import Html.Events as E exposing (..)
@@ -32,6 +32,7 @@ type alias Model =
 
     -- page number, OR show all
     , page : Maybe Int
+    , search : String
     }
 
 
@@ -42,6 +43,7 @@ type Msg
     | PagePrev
     | PageFirst
     | PageLast
+    | SearchInput String
 
 
 init : Lang -> String -> Session -> ( Model, Cmd Msg )
@@ -51,6 +53,7 @@ init lang file session =
       , file = file
       , content = RemoteData.Loading
       , page = Just 0
+      , search = ""
       }
     , Ports.fetchDat { lang = lang, file = file }
     )
@@ -92,6 +95,18 @@ update msg model =
         PageLast ->
             -- crude, but effective
             ( model |> pageTo (\top _ -> top), Cmd.none )
+
+        SearchInput str ->
+            ( { model | search = str }, Cmd.none )
+
+
+applySearch : String -> Dat -> List Entry
+applySearch search { headers, data } =
+    if search == "" then
+        data
+
+    else
+        data |> List.filter (Dat.entrySearchText headers >> String.contains search)
 
 
 pageTo : (Int -> Int -> Int) -> Model -> Model
@@ -164,7 +179,12 @@ viewBody model =
                 [ code [] [ text err ] ]
 
             RemoteData.Success dat ->
-                [ viewPaginator model dat
+                let
+                    entries =
+                        applySearch model.search dat
+                in
+                [ viewPaginator model entries
+                , viewSearch model
                 , table []
                     [ thead []
                         [ tr []
@@ -184,7 +204,7 @@ viewBody model =
                             )
                         ]
                     , tbody []
-                        (dat.data
+                        (entries
                             |> (case model.page of
                                     Nothing ->
                                         identity
@@ -213,7 +233,8 @@ viewBody model =
                                 )
                         )
                     ]
-                , viewPaginator model dat
+                , viewPaginator model entries
+                , viewSearch model
                 ]
 
             _ ->
@@ -225,8 +246,20 @@ pageSize =
     250
 
 
-viewPaginator : Model -> Dat -> Html Msg
-viewPaginator model dat =
+viewSearch : Model -> Html Msg
+viewSearch model =
+    div []
+        [ input
+            [ placeholder "Search"
+            , value model.search
+            , onInput SearchInput
+            ]
+            []
+        ]
+
+
+viewPaginator : Model -> List Entry -> Html Msg
+viewPaginator model data =
     case model.page of
         Nothing ->
             div [] []
@@ -240,7 +273,7 @@ viewPaginator model dat =
                     Basics.min top <| pageSize * (page + 1)
 
                 top =
-                    List.length dat.data
+                    List.length data
             in
             if top <= pageSize then
                 div [] []
