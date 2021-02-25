@@ -20,24 +20,22 @@ import Util exposing (Lang)
 
 
 type alias Model =
-    { session : Session, lang : Lang, sortCol : Col, sortAsc : Bool }
-
-
-type Col
-    = Name
-    | NumHeaders
-    | NumItems
-    | Size
-    | Lang
+    { session : Session
+    , lang : Lang
+    }
 
 
 type Msg
-    = SortClicked Col
+    = Noop
 
 
 init : Lang -> Session -> ( Model, Cmd Msg )
 init lang session =
-    ( { session = session, lang = lang, sortCol = NumHeaders, sortAsc = False }, Cmd.none )
+    ( { session = session
+      , lang = lang
+      }
+    , Cmd.none
+    )
 
 
 toSession : Model -> Session
@@ -53,12 +51,8 @@ updateSession s m =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        SortClicked col ->
-            if model.sortCol == col then
-                ( { model | sortAsc = not model.sortAsc }, Cmd.none )
-
-            else
-                ( { model | sortCol = col, sortAsc = False }, Cmd.none )
+        Noop ->
+            ( model, Cmd.none )
 
 
 subscriptions : Model -> Sub Msg
@@ -71,7 +65,7 @@ view model =
     [ h1 [] [ text "pypoe-json" ]
     , p []
         [ text "Browse and download "
-        , a [ target "_blank", href "https://github.com/erosson/pypoe-json" ] [ text "Path of Exile JSON data" ]
+        , a [ target "_blank", href "https://github.com/erosson/poedat" ] [ text "Path of Exile JSON data" ]
         , text " with ease."
         ]
     , p []
@@ -80,22 +74,6 @@ view model =
         , text " using "
         , a [ target "_blank", href "https://github.com/OmegaK2/PyPoE" ] [ text "PyPoE" ]
         , text ". "
-        , case model.session.index of
-            RemoteData.Success index ->
-                let
-                    successdex =
-                        index.list |> List.filterMap Result.toMaybe
-                in
-                span []
-                    [ text "Parsed "
-                    , text <| Util.formatInt <| List.length successdex
-                    , text " of "
-                    , text <| Util.formatInt <| List.length index.list
-                    , text " .dat files."
-                    ]
-
-            _ ->
-                span [] []
         ]
     , div [] <|
         case model.session.version of
@@ -105,7 +83,9 @@ view model =
             RemoteData.Success version ->
                 [ text "Path of Exile version: "
                 , text version
-                , jsonLinks model "version.json"
+                , text " ("
+                , jsonLinks model "/pypoe/v1/latest.json"
+                , text ")"
                 ]
 
             _ ->
@@ -132,45 +112,15 @@ view model =
             RemoteData.Success index ->
                 [ table []
                     [ thead []
-                        [ th [] [ button [ onClick <| SortClicked Name ] [ text "Filename" ] ]
-                        , th [] [ button [ onClick <| SortClicked NumHeaders ] [ text "Cols" ] ]
-                        , th [] [ button [ onClick <| SortClicked NumItems ] [ text "Rows" ] ]
-                        , th [] [ button [ onClick <| SortClicked Size ] [ text "Size" ] ]
-                        , th [] [ button [ onClick <| SortClicked Lang ] [ text "Languages" ] ]
+                        [ th [] [ text "Filename" ]
                         ]
                     , tbody []
                         (index.list
-                            |> sortIndex model.lang model.sortCol model.sortAsc
                             |> List.map
-                                (\mentry ->
-                                    tr [] <|
-                                        case mentry of
-                                            Ok entry ->
-                                                [ td [] [ a [ Route.href <| Route.Dat model.lang entry.filename ] [ text entry.filename ] ]
-                                                , td [] [ text <| Util.formatInt entry.numHeaders ]
-                                                , td [] [ text <| Util.formatInt entry.numItems ]
-                                                , td [] [ text <| formatBytes entry.size ]
-                                                , td [] <|
-                                                    case model.lang of
-                                                        Nothing ->
-                                                            if Set.isEmpty entry.langs then
-                                                                []
-
-                                                            else
-                                                                [ text <| Util.formatInt <| Set.size entry.langs, text " languages" ]
-
-                                                        Just lang ->
-                                                            if Set.member lang entry.langs then
-                                                                [ text lang ]
-
-                                                            else
-                                                                []
-                                                ]
-
-                                            Err name ->
-                                                [ td [] [ text name ]
-                                                , td [ colspan 4 ] [ code [] [ text "error in PyPoE" ] ]
-                                                ]
+                                (\entry ->
+                                    tr []
+                                        [ td [] [ a [ Route.href <| Route.Dat model.lang entry.filename ] [ text entry.filename ] ]
+                                        ]
                                 )
                         )
                     ]
@@ -178,28 +128,37 @@ view model =
 
             _ ->
                 [ text ".dat list loading..." ]
-    , div []
-        [ p [] [ text "Other JSON data pypoe-json's constructed:" ]
+    , div [] <|
+        [ p [] [ text "Other JSON data poedat's constructed:" ]
         , ul []
-            [ li [] [ text "index.json: .dat file metadata", jsonLinks model "index.json" ]
-            , li [] [ text "list.json: .dat file list", jsonLinks model "list.json" ]
-            , li [] [ text "lang.json: Path of Exile's supported languages", jsonLinks model "lang.json" ]
-            , li [] [ text "version.json: Path of Exile version number", jsonLinks model "version.json" ]
-            , li [] [ text "passive-skill-tree.json", jsonLinks model "passive-skill-tree.json" ]
-            ]
+            ([ li [] [ text "Path of Exile version number: ", jsonLinks model "/pypoe/v1/latest.json" ]
+             , li [] [ text "Passive skill tree: ", jsonLinks model "/web/v1/passive-skill-tree.json" ]
+             ]
+                ++ (case model |> toSession |> .version of
+                        RemoteData.Success version ->
+                            [ li [] [ text "Path of Exile's supported languages: ", jsonLinks model <| "/pypoe/v1/tree/" ++ version ++ "/lang.json" ]
+                            , li [] [ text ".dat file list: ", jsonLinks model <| "/pypoe/v1/tree/" ++ version ++ "/index.json" ]
+                            ]
+
+                        _ ->
+                            []
+                   )
+            )
         ]
     ]
 
 
 jsonLinks : Model -> String -> Html msg
 jsonLinks model file =
-    span []
-        [ text " ("
-        , a [ target "_blank", href <| model.session.githubUrl ++ "/" ++ file ] [ text "github" ]
-        , text ", "
-        , a [ target "_blank", href <| model.session.dataUrl ++ "/" ++ file ] [ text "raw" ]
-        , text ")"
-        ]
+    let
+        basename =
+            file
+                |> String.split "/"
+                |> List.reverse
+                |> List.head
+                |> Maybe.withDefault file
+    in
+    a [ target "_blank", href <| model.session.dataUrl ++ file ] [ text basename ]
 
 
 viewLangLink : Lang -> Lang -> String -> Html msg
@@ -209,70 +168,6 @@ viewLangLink expected lang label =
 
     else
         a [ Route.href <| Route.Home lang ] [ text label ]
-
-
-sortIndex : Lang -> Col -> Bool -> List (Result String Session.IndexEntry) -> List (Result String Session.IndexEntry)
-sortIndex lang col asc =
-    let
-        sortFn fn default =
-            List.sortBy (Result.map fn >> Result.withDefault default)
-
-        sort : List (Result String Session.IndexEntry) -> List (Result String Session.IndexEntry)
-        sort =
-            case col of
-                Name ->
-                    List.sortBy
-                        (\e ->
-                            case e of
-                                Ok entry ->
-                                    entry.filename
-
-                                Err name ->
-                                    name
-                        )
-
-                NumHeaders ->
-                    sortFn .numHeaders -1 >> List.reverse
-
-                NumItems ->
-                    sortFn .numItems -1 >> List.reverse
-
-                Size ->
-                    sortFn .size -1 >> List.reverse
-
-                Lang ->
-                    case lang of
-                        Nothing ->
-                            sortFn (.langs >> Set.size) -1 >> List.reverse
-
-                        Just l ->
-                            List.sortBy
-                                (\e ->
-                                    case e of
-                                        -- does this file differ in this language? then, alphabetically
-                                        Ok entry ->
-                                            ( Set.member l entry.langs |> sortableBool |> (*) -1, entry.filename )
-
-                                        Err name ->
-                                            ( 1, name )
-                                )
-
-        ord =
-            if asc then
-                List.reverse
-
-            else
-                identity
-    in
-    sort >> ord
-
-
-sortableBool b =
-    if b then
-        1
-
-    else
-        0
 
 
 formatBytes : Int -> String

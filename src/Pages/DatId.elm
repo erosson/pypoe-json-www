@@ -87,10 +87,7 @@ viewBody model =
         , text <| String.fromInt model.id
         ]
     , h4 []
-        [ text <| model.file ++ ".json: "
-        , a [ target "_blank", href <| model.session.githubUrl ++ Session.fileLangPath model.lang model.file model.session ] [ text "github" ]
-        , text ", "
-        , a [ target "_blank", href <| model.session.dataUrl ++ Session.fileLangPath model.lang model.file model.session ] [ text "raw" ]
+        [ a [ target "_blank", href <| model.session.dataUrl ++ Session.fileLangPath model.lang model.file model.session ] [ text model.file ]
         , span [] <|
             case model.content of
                 RemoteData.Success dat ->
@@ -99,22 +96,6 @@ viewBody model =
                 _ ->
                     []
         ]
-    , p [] <|
-        case model.lang of
-            Just lang ->
-                [ text <| "File contains " ++ lang ++ " text: "
-                , b []
-                    [ text <|
-                        if Session.hasFileLanguage lang model.file model.session then
-                            "yes"
-
-                        else
-                            "no"
-                    ]
-                ]
-
-            Nothing ->
-                []
     , div [] <|
         case ( model.content, model.row ) of
             ( RemoteData.Failure err, _ ) ->
