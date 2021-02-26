@@ -26,8 +26,7 @@ type alias Index =
 
 
 type alias IndexEntry =
-    -- This used to have more fields; it was simplified very quickly. Artifacts like `Index.byFilename` are still around.
-    { filename : String }
+    { filename : String, numHeaders : Int, numItems : Int, size : Int }
 
 
 type alias Flags =
@@ -41,10 +40,12 @@ init flags =
 
 indexDecoder : D.Decoder Index
 indexDecoder =
-    D.map IndexEntry
-        D.string
+    D.map4 IndexEntry
+        (D.field "filename" D.string)
+        (D.field "numHeaders" D.int)
+        (D.field "numItems" D.int)
+        (D.field "size" D.int)
         |> D.list
-        |> D.map (List.filter (.filename >> String.endsWith ".min.json"))
         |> D.map
             (\list ->
                 list
@@ -63,6 +64,6 @@ fileLangPath mlang file session =
     [ "/pypoe/v1/tree"
     , RemoteData.withDefault "???" session.version
     , lang
-    , file
+    , file ++ ".min.json"
     ]
         |> String.join "/"

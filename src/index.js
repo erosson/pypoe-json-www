@@ -26,13 +26,13 @@ async function main() {
   app.ports.fetchDat.subscribe(async ({lang, file}) => {
     // while initializing, `latest` is a promise
     const version = (await latest).version
-    const path = ["/pypoe/v1/tree", version, lang || "default", file].join("/")
+    const path = ["/pypoe/v1/tree", version, lang || "default", file+".min.json"].join("/")
     await fetchPort(app.ports.fetchedDat, dataUrl+path)
   })
   latest = await latest
   if (latest) {
-    const langs = await fetchPort(app.ports.fetchedLangs, dataUrl+"/pypoe/v1/tree/"+latest.version+"/lang.json")
-    const index = await fetchPort(app.ports.fetchedIndex, dataUrl+"/pypoe/v1/tree/"+latest.version+"/default/index.json")
+    await fetchPort(app.ports.fetchedLangs, dataUrl+"/pypoe/v1/tree/"+latest.version+"/lang.json")
+    await fetchPort(app.ports.fetchedIndex, dataUrl+"/pypoe/v1/tree/"+latest.version+"/pypoe.json")
   }
 }
 async function fetchPort(port, url) {

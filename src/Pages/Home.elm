@@ -20,22 +20,23 @@ import Util exposing (Lang)
 
 
 type alias Model =
-    { session : Session
-    , lang : Lang
-    }
+    { session : Session, lang : Lang, sortCol : Col, sortAsc : Bool }
+
+
+type Col
+    = Name
+    | NumHeaders
+    | NumItems
+    | Size
 
 
 type Msg
-    = Noop
+    = SortClicked Col
 
 
 init : Lang -> Session -> ( Model, Cmd Msg )
 init lang session =
-    ( { session = session
-      , lang = lang
-      }
-    , Cmd.none
-    )
+    ( { session = session, lang = lang, sortCol = NumHeaders, sortAsc = False }, Cmd.none )
 
 
 toSession : Model -> Session
@@ -51,8 +52,12 @@ updateSession s m =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Noop ->
-            ( model, Cmd.none )
+        SortClicked col ->
+            if model.sortCol == col then
+                ( { model | sortAsc = not model.sortAsc }, Cmd.none )
+
+            else
+                ( { model | sortCol = col, sortAsc = False }, Cmd.none )
 
 
 subscriptions : Model -> Sub Msg
@@ -65,7 +70,7 @@ view model =
     [ h1 [] [ text "pypoe-json" ]
     , p []
         [ text "Browse and download "
-        , a [ target "_blank", href "https://github.com/erosson/poedat" ] [ text "Path of Exile JSON data" ]
+        , a [ target "_blank", href <| model.session.dataUrl ++ "/pypoe/v1/tree/" ] [ text "Path of Exile JSON data" ]
         , text " with ease."
         ]
     , p []
@@ -73,6 +78,8 @@ view model =
         , a [ target "_blank", href "https://www.pathofexile.com" ] [ text "Path of Exile" ]
         , text " using "
         , a [ target "_blank", href "https://github.com/OmegaK2/PyPoE" ] [ text "PyPoE" ]
+        , text " and "
+        , a [ target "_blank", href "https://github.com/erosson/poedat" ] [ text "poedat" ]
         , text ". "
         ]
     , div [] <|
@@ -112,14 +119,21 @@ view model =
             RemoteData.Success index ->
                 [ table []
                     [ thead []
-                        [ th [] [ text "Filename" ]
+                        [ th [] [ button [ onClick <| SortClicked Name ] [ text "Filename" ] ]
+                        , th [] [ button [ onClick <| SortClicked NumHeaders ] [ text "Cols" ] ]
+                        , th [] [ button [ onClick <| SortClicked NumItems ] [ text "Rows" ] ]
+                        , th [] [ button [ onClick <| SortClicked Size ] [ text "Size" ] ]
                         ]
                     , tbody []
                         (index.list
+                            |> sortIndex model.lang model.sortCol model.sortAsc
                             |> List.map
                                 (\entry ->
                                     tr []
                                         [ td [] [ a [ Route.href <| Route.Dat model.lang entry.filename ] [ text entry.filename ] ]
+                                        , td [] [ text <| Util.formatInt entry.numHeaders ]
+                                        , td [] [ text <| Util.formatInt entry.numItems ]
+                                        , td [] [ text <| formatBytes entry.size ]
                                         ]
                                 )
                         )
@@ -128,7 +142,7 @@ view model =
 
             _ ->
                 [ text ".dat list loading..." ]
-    , div [] <|
+    , div []
         [ p [] [ text "Other JSON data poedat's constructed:" ]
         , ul []
             ([ li [] [ text "Path of Exile version number: ", jsonLinks model "/pypoe/v1/latest.json" ]
@@ -137,7 +151,13 @@ view model =
                 ++ (case model |> toSession |> .version of
                         RemoteData.Success version ->
                             [ li [] [ text "Path of Exile's supported languages: ", jsonLinks model <| "/pypoe/v1/tree/" ++ version ++ "/lang.json" ]
-                            , li [] [ text ".dat file list: ", jsonLinks model <| "/pypoe/v1/tree/" ++ version ++ "/index.json" ]
+                            , li [] [ text ".dat file metadata: ", jsonLinks model <| "/pypoe/v1/tree/" ++ version ++ "/pypoe.json" ]
+                            , li []
+                                [ text "poedat directory index: "
+                                , jsonLinks model <| "/pypoe/v1/tree/" ++ version ++ "/index.html"
+                                , text ", "
+                                , jsonLinks model <| "/pypoe/v1/tree/" ++ version ++ "/index.json"
+                                ]
                             ]
 
                         _ ->
@@ -168,6 +188,45 @@ viewLangLink expected lang label =
 
     else
         a [ Route.href <| Route.Home lang ] [ text label ]
+
+
+sortIndex : Lang -> Col -> Bool -> List Session.IndexEntry -> List Session.IndexEntry
+sortIndex lang col asc =
+    let
+        sortFn fn default =
+            List.sortBy (Result.map fn >> Result.withDefault default)
+
+        sort : List Session.IndexEntry -> List Session.IndexEntry
+        sort =
+            case col of
+                Name ->
+                    List.sortBy .filename
+
+                NumHeaders ->
+                    List.sortBy .numHeaders >> List.reverse
+
+                NumItems ->
+                    List.sortBy .numItems >> List.reverse
+
+                Size ->
+                    List.sortBy .size >> List.reverse
+
+        ord =
+            if asc then
+                List.reverse
+
+            else
+                identity
+    in
+    sort >> ord
+
+
+sortableBool b =
+    if b then
+        1
+
+    else
+        0
 
 
 formatBytes : Int -> String
