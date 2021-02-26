@@ -100,13 +100,15 @@ update msg model =
             ( { model | search = str }, Cmd.none )
 
 
-applySearch : String -> Dat -> List Entry
+applySearch : String -> Dat -> List ( Int, Entry )
 applySearch search { headers, data } =
     if search == "" then
-        data
+        data |> List.indexedMap Tuple.pair
 
     else
-        data |> List.filter (Dat.entrySearchText headers >> String.contains search)
+        data
+            |> List.indexedMap Tuple.pair
+            |> List.filter (Tuple.second >> Dat.entrySearchText headers >> String.contains search)
 
 
 pageTo : (Int -> Int -> Int) -> Model -> Model
@@ -193,10 +195,10 @@ viewBody model =
                                     Just n ->
                                         List.drop (pageSize * n) >> List.take pageSize
                                )
-                            |> List.indexedMap
-                                (\i row ->
+                            |> List.map
+                                (\( i, row ) ->
                                     tr []
-                                        (td [] [ a [ Route.href <| Route.DatId model.lang model.file i ] [ code [] [ text "#", text <| String.fromInt <| pageSize * Maybe.withDefault 0 model.page + i ] ] ]
+                                        (td [] [ a [ Route.href <| Route.DatId model.lang model.file i ] [ code [] [ text "#", text <| String.fromInt i ] ] ]
                                             :: List.map2
                                                 (\h val ->
                                                     td []
@@ -239,7 +241,7 @@ viewSearch model =
         ]
 
 
-viewPaginator : Model -> List Entry -> Html Msg
+viewPaginator : Model -> List e -> Html Msg
 viewPaginator model data =
     case model.page of
         Nothing ->
