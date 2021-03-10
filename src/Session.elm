@@ -55,7 +55,7 @@ updatePypoeIndex index session =
 
 updateDatIndex : RemoteData String DatIndex -> Session -> Session
 updateDatIndex index session =
-    { session | datIndex = index |> Debug.log "datindex" } |> combineIndexes
+    { session | datIndex = index } |> combineIndexes
 
 
 combineIndexes session =
