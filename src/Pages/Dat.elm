@@ -147,7 +147,12 @@ viewBody model =
         , text model.file
         ]
     , h4 []
-        [ a [ target "_blank", href <| model.session.dataUrl ++ Session.fileLangPath model.lang model.file model.session ] [ text model.file ]
+        [ text model.file
+        , text " ("
+        , a [ target "_blank", href <| model.session.dataUrl ++ Session.fileLangPathJson model.lang model.file model.session ] [ text "json" ]
+        , text ", "
+        , a [ target "_blank", href <| model.session.dataUrl ++ Session.fileLangPathDat model.lang model.file model.session ] [ text "dat" ]
+        , text ")"
         , span [] <|
             case model.content of
                 RemoteData.Success dat ->

@@ -111,7 +111,8 @@ type Msg
     = OnUrlRequest Browser.UrlRequest
     | OnUrlChange Url
     | FetchedVersion D.Value
-    | FetchedIndex D.Value
+    | FetchedPypoeIndex D.Value
+    | FetchedDatIndex D.Value
     | FetchedLangs D.Value
     | HomeMsg Pages.Home.Msg
     | DatMsg Pages.Dat.Msg
@@ -145,13 +146,25 @@ update msg model =
                 Err err ->
                     ( updateSession (model |> toSession |> (\s -> { s | version = RemoteData.Failure <| D.errorToString err })) model, Cmd.none )
 
-        FetchedIndex json ->
-            case D.decodeValue (D.field "data" Session.indexDecoder) json of
-                Ok index ->
-                    ( updateSession (model |> toSession |> (\s -> { s | index = RemoteData.Success index })) model, Cmd.none )
+        FetchedPypoeIndex json ->
+            let
+                index =
+                    json
+                        |> D.decodeValue (D.field "data" Session.pypoeIndexDecoder)
+                        |> Result.mapError D.errorToString
+                        |> RemoteData.fromResult
+            in
+            ( updateSession (model |> toSession |> Session.updatePypoeIndex index) model, Cmd.none )
 
-                Err err ->
-                    ( updateSession (model |> toSession |> (\s -> { s | index = RemoteData.Failure <| D.errorToString err })) model, Cmd.none )
+        FetchedDatIndex json ->
+            let
+                index =
+                    json
+                        |> D.decodeValue (D.field "data" Session.datIndexDecoder)
+                        |> Result.mapError D.errorToString
+                        |> RemoteData.fromResult
+            in
+            ( updateSession (model |> toSession |> Session.updateDatIndex index) model, Cmd.none )
 
         FetchedLangs json ->
             case D.decodeValue (D.field "data" <| D.list D.string) json of
@@ -202,7 +215,8 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         [ Ports.fetchedVersion FetchedVersion
-        , Ports.fetchedIndex FetchedIndex
+        , Ports.fetchedPypoeIndex FetchedPypoeIndex
+        , Ports.fetchedDatIndex FetchedDatIndex
         , Ports.fetchedLangs FetchedLangs
         , case model of
             NotFound session ->

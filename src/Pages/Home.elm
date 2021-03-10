@@ -12,6 +12,7 @@ module Pages.Home exposing
 import Html as H exposing (..)
 import Html.Attributes as A exposing (..)
 import Html.Events as E exposing (..)
+import Maybe.Extra
 import RemoteData exposing (RemoteData)
 import Route exposing (Route)
 import Session exposing (Session)
@@ -125,16 +126,24 @@ view model =
                         , th [] [ button [ onClick <| SortClicked Size ] [ text "Size" ] ]
                         ]
                     , tbody []
-                        (index.list
+                        (index
                             |> sortIndex model.lang model.sortCol model.sortAsc
                             |> List.map
                                 (\entry ->
                                     tr []
-                                        [ td [] [ a [ Route.href <| Route.Dat model.lang entry.filename ] [ text entry.filename ] ]
-                                        , td [] [ text <| Util.formatInt entry.numHeaders ]
-                                        , td [] [ text <| Util.formatInt entry.numItems ]
-                                        , td [] [ text <| formatBytes entry.size ]
-                                        ]
+                                        (td [] [ a [ Route.href <| Route.Dat model.lang entry.name ] [ text entry.name ] ]
+                                            :: (case entry.pypoe of
+                                                    Nothing ->
+                                                        [ td [ colspan 3 ] [ code [] [ text "no json data" ] ]
+                                                        ]
+
+                                                    Just pypoe ->
+                                                        [ td [] [ text <| Util.formatInt pypoe.numHeaders ]
+                                                        , td [] [ text <| Util.formatInt pypoe.numItems ]
+                                                        , td [] [ text <| formatBytes pypoe.size ]
+                                                        ]
+                                               )
+                                        )
                                 )
                         )
                     ]
@@ -151,12 +160,18 @@ view model =
                 ++ (case model |> toSession |> .version of
                         RemoteData.Success version ->
                             [ li [] [ text "Path of Exile's supported languages: ", jsonLinks model <| "/pypoe/v1/tree/" ++ version ++ "/lang.json" ]
-                            , li [] [ text ".dat file metadata: ", jsonLinks model <| "/pypoe/v1/tree/" ++ version ++ "/pypoe.json" ]
+                            , li [] [ text "PyPoE metadata: ", jsonLinks model <| "/pypoe/v1/tree/" ++ version ++ "/pypoe.json" ]
                             , li []
-                                [ text "poedat directory index: "
+                                [ text "poedat's PyPoE directory index: "
                                 , jsonLinks model <| "/pypoe/v1/tree/" ++ version ++ "/index.html"
                                 , text ", "
                                 , jsonLinks model <| "/pypoe/v1/tree/" ++ version ++ "/index.json"
+                                ]
+                            , li []
+                                [ text "poedat's raw .dat directory index: "
+                                , jsonLinks model <| "/dat/v1/tree/" ++ version ++ "/index.html"
+                                , text ", "
+                                , jsonLinks model <| "/dat/v1/tree/" ++ version ++ "/index.json"
                                 ]
                             ]
 
@@ -190,26 +205,27 @@ viewLangLink expected lang label =
         a [ Route.href <| Route.Home lang ] [ text label ]
 
 
-sortIndex : Lang -> Col -> Bool -> List Session.IndexEntry -> List Session.IndexEntry
+sortIndex : Lang -> Col -> Bool -> List Session.CombinedIndexEntry -> List Session.CombinedIndexEntry
 sortIndex lang col asc =
     let
         sortFn fn default =
             List.sortBy (Result.map fn >> Result.withDefault default)
 
-        sort : List Session.IndexEntry -> List Session.IndexEntry
+        sort : List Session.CombinedIndexEntry -> List Session.CombinedIndexEntry
         sort =
             case col of
                 Name ->
-                    List.sortBy .filename
+                    -- List.sortBy .filename
+                    List.sortBy .name
 
                 NumHeaders ->
-                    List.sortBy .numHeaders >> List.reverse
+                    List.sortBy (.pypoe >> Maybe.Extra.unwrap -1 .numHeaders) >> List.reverse
 
                 NumItems ->
-                    List.sortBy .numItems >> List.reverse
+                    List.sortBy (.pypoe >> Maybe.Extra.unwrap -1 .numItems) >> List.reverse
 
                 Size ->
-                    List.sortBy .size >> List.reverse
+                    List.sortBy (.pypoe >> Maybe.Extra.unwrap -1 .size) >> List.reverse
 
         ord =
             if asc then

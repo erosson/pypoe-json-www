@@ -22,17 +22,22 @@ async function main() {
   const flags = {dataUrl}
   const app = Elm.Main.init({flags});
 
+  // Start subscribing to `ports.fetchDat` before `latest.json` finishes fetching.
+  // `latest` is a promise; do not immediately `await`!
   let latest = fetchPort(app.ports.fetchedVersion, dataUrl+"/pypoe/v1/latest.json")
   app.ports.fetchDat.subscribe(async ({lang, file}) => {
-    // while initializing, `latest` is a promise
     const version = (await latest).version
     const path = ["/pypoe/v1/tree", version, lang || "default", file+".min.json"].join("/")
     await fetchPort(app.ports.fetchedDat, dataUrl+path)
   })
+  // Subscription's configured, *now* we can `await latest`. It's no longer a promise.
   latest = await latest
   if (latest) {
-    await fetchPort(app.ports.fetchedLangs, dataUrl+"/pypoe/v1/tree/"+latest.version+"/lang.json")
-    await fetchPort(app.ports.fetchedIndex, dataUrl+"/pypoe/v1/tree/"+latest.version+"/pypoe.json")
+    await Promise.all([
+      fetchPort(app.ports.fetchedLangs, dataUrl+"/pypoe/v1/tree/"+latest.version+"/lang.json"),
+      fetchPort(app.ports.fetchedPypoeIndex, dataUrl+"/pypoe/v1/tree/"+latest.version+"/pypoe.json"),
+      fetchPort(app.ports.fetchedDatIndex, dataUrl+"/dat/v1/tree/"+latest.version+"/Data/index.json"),
+    ])
   }
 }
 async function fetchPort(port, url) {

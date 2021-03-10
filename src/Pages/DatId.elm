@@ -87,7 +87,12 @@ viewBody model =
         , text <| String.fromInt model.id
         ]
     , h4 []
-        [ a [ target "_blank", href <| model.session.dataUrl ++ Session.fileLangPath model.lang model.file model.session ] [ text model.file ]
+        [ text model.file
+        , text " ("
+        , a [ target "_blank", href <| model.session.dataUrl ++ Session.fileLangPathJson model.lang model.file model.session ] [ text "json" ]
+        , text ", "
+        , a [ target "_blank", href <| model.session.dataUrl ++ Session.fileLangPathDat model.lang model.file model.session ] [ text "dat" ]
+        , text ")"
         , span [] <|
             case model.content of
                 RemoteData.Success dat ->
@@ -133,8 +138,10 @@ viewBody model =
                     [ summary [] [ text "JSON" ]
                     , div []
                         [ h4 []
-                            [ text "List format ("
-                            , a [ target "_blank", href <| model.session.dataUrl ++ Session.fileLangPath model.lang model.file model.session ] [ text "source" ]
+                            [ text "List format (source: "
+                            , a [ target "_blank", href <| model.session.dataUrl ++ Session.fileLangPathJson model.lang model.file model.session ] [ text "json" ]
+                            , text ", "
+                            , a [ target "_blank", href <| model.session.dataUrl ++ Session.fileLangPathDat model.lang model.file model.session ] [ text "dat" ]
                             , text ")"
                             ]
                         , pre [] [ text <| JE.encode 2 <| Dat.entryEncoder row ]
