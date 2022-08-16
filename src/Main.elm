@@ -242,23 +242,29 @@ subscriptions model =
 
 view : Model -> Browser.Document Msg
 view model =
-    (case model of
-        NotFound session ->
-            Pages.NotFound.view session |> defaultDoc
+    { title = "RIP"
+    , body =
+        [ text "This project has been retired. You should try "
+        , a [ href "https://snosme.github.io/poe-dat-viewer/" ] [ text "poe-dat-viewer" ]
+        , text " instead"
+        ]
+    }
 
-        Home pgmodel ->
-            Pages.Home.view pgmodel |> List.map (H.map HomeMsg) |> defaultDoc
 
-        Dat pgmodel ->
-            Pages.Dat.view pgmodel |> docMap DatMsg
 
-        DatId pgmodel ->
-            Pages.DatId.view pgmodel |> docMap DatIdMsg
-
-        Debug pgmodel ->
-            Pages.Debug.view pgmodel |> List.map (H.map DebugMsg) |> defaultDoc
-    )
-        |> (\doc -> { doc | body = doc.body ++ footer })
+--(case model of
+--    NotFound session ->
+--        Pages.NotFound.view session |> defaultDoc
+--    Home pgmodel ->
+--        Pages.Home.view pgmodel |> List.map (H.map HomeMsg) |> defaultDoc
+--    Dat pgmodel ->
+--        Pages.Dat.view pgmodel |> docMap DatMsg
+--    DatId pgmodel ->
+--        Pages.DatId.view pgmodel |> docMap DatIdMsg
+--    Debug pgmodel ->
+--        Pages.Debug.view pgmodel |> List.map (H.map DebugMsg) |> defaultDoc
+--)
+--    |> (\doc -> { doc | body = doc.body ++ footer })
 
 
 docMap : (a -> b) -> Browser.Document a -> Browser.Document b
