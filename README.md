@@ -1,3 +1,9 @@
+# ⚠ **This project is no longer maintained.** 
+
+You should use [poe-dat-viewer](https://snosme.github.io/poe-dat-viewer/) instead. ([github](https://github.com/SnosMe/poe-dat-viewer))
+
+---
+
 # [pypoe-json-www](https://pypoe-json.erosson.org)
 
 View Path of Exile's raw json data in your web browser, using the [pypoe-json project](https://github.com/erosson/pypoe-json).
